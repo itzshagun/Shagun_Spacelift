@@ -1,13 +1,63 @@
+# -------------------------
+# Provider Configuration
+# -------------------------
 provider "aws" {
-  region = "ap-south-1"
+  region = var.aws_region
 }
+
+# -------------------------
+# Variables
+# -------------------------
+variable "aws_region" {
+  description = "AWS region to deploy resources"
+  default     = "ap-south-1"
+}
+
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  default     = "10.0.0.0/16"
+}
+
+variable "subnet_cidr" {
+  description = "CIDR block for Subnet"
+  default     = "10.0.1.0/24"
+}
+
+variable "availability_zone" {
+  description = "Availability Zone for Subnet"
+  default     = "ap-south-1a"
+}
+
+variable "ami_id" {
+  description = "AMI ID for EC2 instance"
+  default     = "ami-01760eea5c574eb86"
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  default     = "t3.micro"
+}
+
+variable "key_name" {
+  description = "Key pair name for EC2"
+  default     = "assg_key"
+}
+
+variable "bucket_prefix" {
+  description = "Prefix for S3 bucket name"
+  default     = "my-terraform-s3-bucket-shagun"
+}
+
+# -------------------------
+# Resources
+# -------------------------
 
 resource "random_id" "rand" {
   byte_length = 4
 }
 
 resource "aws_vpc" "main_vpc" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = {
@@ -17,8 +67,8 @@ resource "aws_vpc" "main_vpc" {
 
 resource "aws_subnet" "main_subnet" {
   vpc_id                  = aws_vpc.main_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "ap-south-1a"
+  cidr_block              = var.subnet_cidr
+  availability_zone       = var.availability_zone
   map_public_ip_on_launch = true
   tags = {
     Name = "MyMainSubnet"
@@ -80,12 +130,12 @@ resource "aws_security_group" "main_sg" {
 }
 
 resource "aws_instance" "main_ec2" {
-  ami                         = "ami-01760eea5c574eb86"
-  instance_type               = "t3.micro"
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
   subnet_id                   = aws_subnet.main_subnet.id
   vpc_security_group_ids      = [aws_security_group.main_sg.id]
   associate_public_ip_address = true
-  key_name                    = "assg_key"
+  key_name                    = var.key_name
 
   tags = {
     Name = "MyMainEC2"
@@ -93,7 +143,7 @@ resource "aws_instance" "main_ec2" {
 }
 
 resource "aws_s3_bucket" "my_bucket" {
-  bucket = "my-terraform-s3-bucket-shagun-${random_id.rand.hex}"
+  bucket = "${var.bucket_prefix}-${random_id.rand.hex}"
   acl    = "private"
 
   tags = {
@@ -102,6 +152,9 @@ resource "aws_s3_bucket" "my_bucket" {
   }
 }
 
+# -------------------------
+# Outputs
+# -------------------------
 output "ec2_public_ip" {
   value = aws_instance.main_ec2.public_ip
 }
